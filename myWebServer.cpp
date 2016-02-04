@@ -674,18 +674,8 @@ void MyWebServerClass::handle()
 	server.handleClient();
 	if (dsnServerActive)  dnsServer.processNextRequest();  //captive dns	
 			
-	if (millis() - lastTimeCheck >= 1000) {    //called every second
-		
+	if (millis() - lastTimeCheck >= 1000) {    //called around every second	
 		lastTimeCheck = millis();
-
-		if (useNTP) {
-			if (timeStatus() != timeNotSet) {
-				if (now() != prevDisplay) { //update the display only if time has changed
-					prevDisplay = now();					
-				}
-			}
-		}  //if NTP enabled
-
 	}  //every second timer....
 		
 	
