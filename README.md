@@ -1,7 +1,7 @@
 # myWebServer
 myWebServer library for esp8266/nodemcu arduino ide.  
 
-Uses Arduino IDE,  ensure latest esp8266 form:  https://github.com/esp8266/Arduino
+Uses Arduino IDE,  ensure latest esp8266 from:  https://github.com/esp8266/Arduino
 
 Library requires the use of the following 3rd party libraries to be installed:
 
