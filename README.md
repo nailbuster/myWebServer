@@ -3,6 +3,12 @@ myWebServer library for esp8266/nodemcu arduino ide.
 
 Uses Arduino IDE,  ensure latest esp8266 form:  https://github.com/esp8266/Arduino
 
+Library requires the use of the following 3rd party libraries to be installed:
+
+TimeLib for ntp here:  https://github.com/PaulStoffregen/Time
+
+Arduino Json here:  https://github.com/bblanchon/ArduinoJson
+
 
 I'm staring the library as an easy starting/base for working on the esp8266...  myWebServer will serve files from the SPIFFs on your device.  You should only use this on devices with available spiffs!  (4MB on nodemcu for example).
 
@@ -20,11 +26,8 @@ ntp time support will some methods to easily grab current date/time.
 
 see sample htmls in folder for other features....
 
-Library requires the use of the following libraries to be installed:
 
-TimeLib for ntp here:  https://github.com/PaulStoffregen/Time
 
-Arduino Json here:  https://github.com/bblanchon/ArduinoJson
 
 this is still a WIP but I'll be updating as needed....I have other features I want to implement as well....
 
