@@ -1,0 +1,133 @@
+ <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+
+  <style type="text/css">
+  form  { display: table;      }
+  p     { display: table-row;  }
+  label { display: table-cell; }
+  input { display: table-cell; }
+  </style>  
+  <h1>ThingSpeak Configure</h1>     
+  <br>
+<form id="myform" >
+  <fieldset><legend>ThingSpeak Configure</legend>
+  <p> <label>ThingSpeak Feature</label><select id="status" name="status" value="0">                    
+                    <option value="0">Disable</option>
+                    <option value="1">Enabled</option>
+                </select><br>
+  <p><label> ThingSpeak Server URL/IP</label><input id="spkurl" name="spkurl" type="string"  value="api.thingspeak.com"></p>
+  <p><label> ThingSpeak Channel WriteKey </label><input id="spkwkey" name="spkwkey" type="string"></p>
+  <p><label> ThingSpeak write interval seconds (15 or more) </label><input id="spkint" name="spkint" type="number" value="15"></p>
+  
+  
+  <br><label> Talkback Configure (Remote Temp Set)  
+  <p> <label>Talkback Feature</label><select id="tbstatus" name="tbstatus" value="0">
+                    <option value="0">Disable</option>
+                    <option value="1">Enabled</option>                    
+                </select><br>  
+  <p><label> Talkback ID (temperature set)</label><input id="tkbid" name="tkbid" type="string" ></p>
+  <p><label> TalkBack key</label><input id="tkbkey" name="tkbkey" type="string"></p>
+  <p><label> TalkBack read interval seconds (5 or more) </label><input id="tkbint" name="tkbint" type="number" value="5"></p>
+ </fieldset>      
+  <br>      
+  <fieldset><legend>MQTT Configure</legend>    
+      <p> <label>MQTT Interface</label><select id="mqstatus" name="mqstatus" value="0">
+                    <option value="0">Disable</option>
+                    <option value="1">Enabled</option>                    
+                </select><br>  
+  <p><label> MQTT Server</label><input id="mqserver" name="mqserver" type="string"></p>
+  <p><label> MQTT Port</label><input id="mqport" name="mqport" type="number" value="1883"></p>  
+  <p><label> MQTT Username</label><input id="mquser" name="mquser" type="string"></p>
+  <p><label> MQTT Password</label><input id="mqpass" name="mqpass" type="password"></p>  
+  <p><label> MQTT Publish Topic</label><input id="mqpub" name="mqpub" type="string" value="MyEspPub"></p>  
+  <p><label> MQTT Subscribe Topic</label><input id="mqsub" name="mqsub" type="string" value="MyEspSub"></p>
+  <p><label> MQTT interval (default 5 seconds) </label><input id="mqint" name="mqint" type="number" value="5"></p>      
+   
+</fieldset>  
+   
+      <input type="button" name="savebut" id="savebut" value="Save Settings" onclick="SendFormJson()" style="width: 300px; height: 50px;" />&nbsp&nbsp
+      <input action="action" type="button" value="Back" onclick="history.go(-1);" style="width: 100px; height: 50px;" />      
+  
+      
+</form>
+
+<script>
+var xmlhttp = new XMLHttpRequest();
+var url = "/jsonload?f=cloudgen.json";
+
+xmlhttp.onreadystatechange = function() {
+    if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+        var myArr = JSON.parse(xmlhttp.responseText);
+        myFunction(myArr);
+    }
+};
+xmlhttp.open("GET", url, true);
+xmlhttp.send();
+
+function myFunction(jsonData) {  //process the json from the ESP
+
+var jsonDataKeys = Object.keys(jsonData);
+for(var i=0; i<jsonDataKeys.length; i++){
+    var fields = document.getElementsByName(jsonDataKeys[i]);                      
+    for (var f=0; f<fields.length; f++){
+    var field=fields[f];
+    if (field.getAttribute('type')=='checkbox')                 
+                              {if (field.getAttribute('value')==jsonData[jsonDataKeys[i]])  field.setAttribute('checked','checked');                                   
+                              }     
+    else if (field.getAttribute('type')=='radio')                 
+                              {if (field.getAttribute('value')==jsonData[jsonDataKeys[i]])  field.setAttribute('checked','checked');                                         
+                               }                                         
+    else if (field.getAttribute('type')=='button')                 
+                              {  }//do nothing  
+    else   {field.value =  jsonData[jsonDataKeys[i]];}
+    } //for fields loop
+  }//for loop
+} //function
+
+</script>
+
+
+
+
+<script>
+function SendFormJson(){ 
+ document.getElementById("savebut").value= "Saved...";
+ var inputs=document.getElementsByTagName("*")
+      var data = {};
+      var field;
+      var i;
+    for (i=0; i<inputs.length; i++) 
+       {
+         field = inputs[i];                   
+         if (field.tagName == 'INPUT' || field.tagName == 'SELECT')
+         {
+          if (field.getAttribute('type') != undefined)                                  
+                {
+                  if (field.getAttribute('type')=='checkbox')                 
+                              { 
+                               if (field.checked)    
+                                      {data[field.name] = field.value;}                                   
+                              }     
+                   else if (field.getAttribute('type')=='radio')                 
+                              {
+                               if (field.checked)    
+                                      {data[field.name] = field.value;}                                   
+                              }        
+                  else if (field.getAttribute('type')=='button')                 
+                              {  }//do nothing                                                        
+                   else {data[field.name] = field.value;}  //not checkbox          
+                }
+           else  {data[field.name] = field.value;}                          
+        }//not input or select so do nothing...                       
+       } //for loop
+//alert(   JSON.stringify(data));    
+var xhttp = new XMLHttpRequest();       
+xhttp.open("POST", "/jsonsave?f=cloudgen.json", false);
+xhttp.setRequestHeader("Content-type","application/json");//"application/x-www-form-urlencoded");  //
+//xhttp.send("JSON=" + JSON.stringify(data));  
+xhttp.send(JSON.stringify(data));  
+}
+</script>
+
+
+   
