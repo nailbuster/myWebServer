@@ -48,11 +48,12 @@ byte packetBuffer[NTP_PACKET_SIZE];
 time_t prevDisplay = 0; // when the digital clock was displayed
 
 MyWebServerClass MyWebServer;
+String MyWebServerLog;
 
 
 
 // send an NTP request to the time server at the given address
-void sendNTPpacket(IPAddress &address)
+void ICACHE_FLASH_ATTR sendNTPpacket(IPAddress &address)
 {
 	// set all bytes in the buffer to 0
 	memset(packetBuffer, 0, NTP_PACKET_SIZE);
@@ -75,7 +76,7 @@ void sendNTPpacket(IPAddress &address)
 }
 
 
-time_t getNtpTime()
+time_t ICACHE_FLASH_ATTR getNtpTime()
 {
 	
 	while (UDPNTPClient.parsePacket() > 0); // discard any previously received packets
@@ -107,7 +108,7 @@ time_t getNtpTime()
 
 
 // convert a single hex digit character to its integer value (from https://code.google.com/p/avr-netino/)
-unsigned char h2int(char c)
+unsigned char ICACHE_FLASH_ATTR h2int(char c)
 {
 	if (c >= '0' && c <= '9') {
 		return((unsigned char)c - '0');
@@ -121,7 +122,7 @@ unsigned char h2int(char c)
 	return(0);
 }
 
-String MyWebServerClass::urldecode(String input) // (based on https://code.google.com/p/avr-netino/)
+String ICACHE_FLASH_ATTR MyWebServerClass::urldecode(String input) // (based on https://code.google.com/p/avr-netino/)
 {
 	char c;
 	String ret = "";
@@ -146,7 +147,7 @@ String MyWebServerClass::urldecode(String input) // (based on https://code.googl
 }
 
 
-String MyWebServerClass::urlencode(String str)
+String ICACHE_FLASH_ATTR MyWebServerClass::urlencode(String str)
 {
 	String encodedString = "";
 	char c;
@@ -188,7 +189,7 @@ String MyWebServerClass::urlencode(String str)
 
 
 
-bool isAdmin()
+bool ICACHE_FLASH_ATTR isAdmin()
 {
 	if (ConfigPassword == "") return true; //not using web password (default);
 	
@@ -203,7 +204,7 @@ bool isAdmin()
 	return isAuth;  
 }
 
-String getContentType(String filename)
+String ICACHE_FLASH_ATTR getContentType(String filename)
 {
 	if (server.hasArg("download")) return "application/octet-stream";
 	else if (filename.endsWith(".htm")) return "text/html";
@@ -224,10 +225,10 @@ String getContentType(String filename)
 
 
 
-bool handleFileRead(String path)
+bool ICACHE_FLASH_ATTR handleFileRead(String path)
 {
 	DebugPrintln("handleFileRead: " + path);
-	if (path.endsWith("/")) path += "index.htm";
+	if (path.endsWith("/")) path += "index.html";
 	String contentType = getContentType(path);
 	String pathWithGz = path + ".gz";
 	if (isAdmin())
@@ -244,7 +245,7 @@ bool handleFileRead(String path)
 	return false;
 }
 
-void handleFileUpload()
+void ICACHE_FLASH_ATTR handleFileUpload()
 {
 	if (server.uri() != "/upload") return;
 	if (isAdmin() == false) return;
@@ -271,7 +272,7 @@ void handleFileUpload()
 	}
 }
 
-void handleFileDelete(String fname)
+void ICACHE_FLASH_ATTR handleFileDelete(String fname)
 {
 	if (isAdmin() == false) return;
 	DebugPrintln("handleFileDelete: " + fname);
@@ -285,7 +286,7 @@ void handleFileDelete(String fname)
 	}
 }
 
-void handleJsonSave()
+void ICACHE_FLASH_ATTR handleJsonSave()
 {
 	if (isAdmin() == false) return;
 	if (server.args() == 0)
@@ -307,7 +308,7 @@ void handleJsonSave()
 	if (MyWebServer.jsonSaveHandle != NULL)	MyWebServer.jsonSaveHandle(fname);
 }
 
-void handleJsonLoad()
+void ICACHE_FLASH_ATTR handleJsonLoad()
 {
 	if (isAdmin() == false) return;
 	if (server.args() == 0)
@@ -322,7 +323,7 @@ void handleJsonLoad()
 	}
 }
 
-bool handleFileDownload(String fname)
+bool ICACHE_FLASH_ATTR handleFileDownload(String fname)
 {
 	if (isAdmin() == false) return false;
 	DebugPrintln("handleFileDownload: " + fname);
@@ -337,7 +338,7 @@ bool handleFileDownload(String fname)
 	return false;
 }
 
-void handleFileList()
+void ICACHE_FLASH_ATTR handleFileList()
 {
 	if (isAdmin() == false) return;
 	Dir dir = SPIFFS.openDir("/");
@@ -366,7 +367,7 @@ void handleFileList()
 	server.send(200, "text/json", output);
 }
 
-void HandleFileBrowser()
+void ICACHE_FLASH_ATTR HandleFileBrowser()
 {
 	if (isAdmin() == false) return;
 	if (server.arg("do") == "list") {
@@ -382,12 +383,15 @@ void HandleFileBrowser()
 			}
 			else
 			{
-				if (!handleFileRead("/filebrowse.html")) { server.send(200, "text/html", PAGE_FSBROWSE); }
+				if (!handleFileRead("/filebrowse.html")) { //send GZ version of embedded browser
+																server.sendHeader("Content-Encoding", "gzip");
+																server.send_P(200, "text/html", PAGE_FSBROWSE, sizeof(PAGE_FSBROWSE));
+														 }
 				MyWebServer.isDownloading = true; //need to stop all cloud services from doing anything!  crashes on upload with mqtt...
 			}
 }
 
-void formatspiffs()
+void ICACHE_FLASH_ATTR formatspiffs()
 {
 	if (isAdmin() == false) return;
 	DebugPrintln("formatting spiff...");
@@ -398,7 +402,7 @@ void formatspiffs()
 	server.send(200, "text/html", "Format Finished....rebooting");
 }
 
-void handleESPUpdate(){
+void ICACHE_FLASH_ATTR handleESPUpdate(){
 	if (isAdmin() == false) return;
 	// handler for the file upload, get's the sketch bytes, and writes
 	// them through the Update object
@@ -436,14 +440,60 @@ void handleESPUpdate(){
 };
 
 
-void restartESP() {
+void ICACHE_FLASH_ATTR FileSaveContent_P(String fname, PGM_P content, u_long numbytes, bool overWrite = false) {   //save PROGMEM array to spiffs file....//f must be already open for write!
+
+	if (SPIFFS.exists(fname) & overWrite == false) return;
+
+
+	const int writepagesize = 1024;
+	char contentUnit[writepagesize + 1];
+	contentUnit[writepagesize] = '\0';
+	u_long remaining_size = numbytes;
+
+
+	File f = SPIFFS.open(fname, "w");
+
+
+
+	if (f) { // we could open the file 
+
+		while (content != NULL && remaining_size > 0) {
+			size_t contentUnitLen = writepagesize;
+
+			if (remaining_size < writepagesize) contentUnitLen = remaining_size;
+			// due to the memcpy signature, lots of casts are needed
+			memcpy_P((void*)contentUnit, (PGM_VOID_P)content, contentUnitLen);
+
+			content += contentUnitLen;
+			remaining_size -= contentUnitLen;
+
+			// write is so overloaded, had to use the cast to get it pick the right one
+			f.write((uint8_t *)contentUnit, contentUnitLen);
+		}
+		f.close();
+		DebugPrintln("created:" + fname);
+	}
+}
+
+
+
+
+void ICACHE_FLASH_ATTR CheckNewSystem() {   //if new system we save the embedded htmls into the root of Spiffs as .gz!
+	
+	FileSaveContent_P("/wifisetup.html.gz", PAGE_WIFISETUP, sizeof(PAGE_WIFISETUP), false);
+	FileSaveContent_P("/filebrowse.html.gz", PAGE_FSBROWSE, sizeof(PAGE_FSBROWSE), false);
+}
+
+
+
+void ICACHE_FLASH_ATTR restartESP() {
 	if (isAdmin() == false) return;
 	server.send(200, "text/plain", "Restarting ESP...");
 	delay(100);
 	ESP.restart();
 }
 
-void sendNetworkStatus()
+void ICACHE_FLASH_ATTR sendNetworkStatus()
 {
 	uint8_t mac[6];
 	char macStr[18] = { 0 };
@@ -502,9 +552,31 @@ void sendNetworkStatus()
 	values += "NetMask        :   " + (String)WiFi.subnetMask()[0] + "." + (String)WiFi.subnetMask()[1] + "." + (String)WiFi.subnetMask()[2] + "." + (String)WiFi.subnetMask()[3] + "<br>";
 	values += "Mac Address    >   " + String(macStr) + "<br>";
 	values += "NTP Time       :   " + String(hour()) + ":" + String(minute()) + ":" + String(second()) + " " + String(year()) + "-" + String(month()) + "-" + String(day()) + "<br>";
+	values += "Server Uptime  :   " + String(millis()/60000) + " minutes"+ "<br>";
 	values += wifilist;
 	values += " <input action=\"action\" type=\"button\" value=\"Back\" onclick=\"history.go(-1);\" style=\"width: 100px; height: 50px;\" /> </body> ";
 	server.send(200, "text/html", values);
+}
+
+void ICACHE_FLASH_ATTR handleWifiConfig() {
+	//send GZ version of embedded config
+	server.sendHeader("Content-Encoding", "gzip");
+	server.send_P(200, "text/html", PAGE_WIFISETUP, sizeof(PAGE_WIFISETUP));
+}
+
+void ICACHE_FLASH_ATTR handleRoot() {  //handles root of website (used in case of virgin systems.)
+
+	if (!handleFileRead("/")) {   //if new system without index we either show wifisetup or if already setup/connected we show filebrowser for config.
+		if (isAdmin()) {
+			if (WiFi.status() != WL_CONNECTED) {
+				handleWifiConfig();
+			}
+			else { HandleFileBrowser(); }
+		}
+	}
+ //use indexhtml or use embedded wifi setup...	
+
+
 }
 
 String MyWebServerClass::CurTimeString() {
@@ -517,7 +589,7 @@ String MyWebServerClass::CurDateString() {
 	return String(year()) + "-" + String(month()) + "-" + String(day());
 }
 
-void MyWebServerClass::begin()
+void ICACHE_FLASH_ATTR MyWebServerClass::begin()
 {
 //SERVER STARTUP
 //SERVER INIT
@@ -633,26 +705,24 @@ void MyWebServerClass::begin()
 
 //list directory
 	server.on("/favicon.ico", []() { server.send(200, "text/html", "");   });
-	server.on("/browse", HandleFileBrowser);
+	server.on("/browse", HandleFileBrowser); 	
 	server.on("/upload", HTTP_POST, []() { server.send(200, "text/plain", ""); }, handleFileUpload);
 	server.on("/flashupdate", HTTP_POST, []() { server.send(200, "text/plain", (Update.hasError()) ? "FAIL" : "OK Restarting....wait");ESP.restart(); }, handleESPUpdate);
 	server.on("/info.html", sendNetworkStatus);
-	server.on("/", []() {if (!handleFileRead("/index.html")) {   //if new system without index we either show wifisetup or if already setup/connected we show filebrowser for config.
-		if (isAdmin()) {
-			if (WiFi.status() != WL_CONNECTED) { server.send(200, "text/html", PAGE_WIFISETUP); }
-			else { HandleFileBrowser(); }
-		}
-	}} );  //use indexhtml or use embedded wifi setup...		
+	server.on("/", handleRoot);
 	server.on("/jsonsave", handleJsonSave);
 	server.on("/jsonload", handleJsonLoad);
 	server.on("/formatspiff", formatspiffs);
-	server.on("/generate_204", []() { if (!handleFileRead("/index.html")) { if (isAdmin()) server.send(200, "text/html", PAGE_WIFISETUP); } });  //use indexhtml or use embedded wifi setup...);
+	server.on("/serverlog", []() { if (isAdmin()) server.send(200, "text/html", MyWebServerLog);});
+	server.on("/generate_204", handleRoot);  //use indexhtml or use embedded wifi setup...);
 	server.on("/restartesp", restartESP);
 
 	server.onNotFound([]() {
 		if (!handleFileRead(server.uri()))
 			server.send(404, "text/plain", " FileNotFound " + server.arg(0));
 	});
+
+	CheckNewSystem();  //see if init files exist....
 
 	server.begin();
 	OTAisflashing = false;
@@ -664,24 +734,43 @@ void MyWebServerClass::begin()
 		setSyncProvider(getNtpTime);
 		setSyncInterval(UpdateNTPEvery*60);  
 	}
+
+
+	ServerLog("SERVER STARTED");
 	DebugPrintln(CurTimeString());
 }
 
 
 
-void MyWebServerClass::handle()
+void ICACHE_FLASH_ATTR MyWebServerClass::handle()
 {
 	server.handleClient();
 	if (dsnServerActive)  dnsServer.processNextRequest();  //captive dns	
 			
-	if (millis() - lastTimeCheck >= 1000) {    //called around every second	
+	if (millis() - lastTimeCheck >= 5000) {    //called around every second	
+		//DebugPrintln(CurTimeString());
 		lastTimeCheck = millis();
+		//heap test
+		//DebugPrintln("Free heap: " + String(ESP.getFreeHeap()));
 	}  //every second timer....
 		
 	
 }
 
-bool MyWebServerClass::WiFiLoadconfig()
+
+void ICACHE_FLASH_ATTR MyWebServerClass::ServerLog(String logmsg)
+{
+	MyWebServerLog += "*"+String(month())+String(day())+CurTimeString()+"*" + logmsg + "<br>";
+	if (MyWebServerLog.length() > 1024) { MyWebServerLog.remove(0, 256); }
+}
+
+
+bool ICACHE_FLASH_ATTR MyWebServerClass::isAuthorized() {
+	return isAdmin();
+}
+
+
+bool ICACHE_FLASH_ATTR MyWebServerClass::WiFiLoadconfig()
 {
 
 

@@ -65,10 +65,11 @@ extern ESP8266WebServer server;
 
 
 
+
 class MyWebServerClass
 {
  protected:
-
+	
 
  public:
 	 String ssid;
@@ -95,6 +96,7 @@ class MyWebServerClass
 	 String urldecode(String input);
 	 String urlencode(String str);
 	 
+	 
 	
 
 	void begin();
@@ -102,10 +104,13 @@ class MyWebServerClass
 	void (*jsonSaveHandle)(String fname) = NULL;  //callback function when json form is saved...fname is the filename saved.
 	
 	bool WiFiLoadconfig();  //load wificonfig from json file
+	void ServerLog(String logmsg);
+	bool isAuthorized();  
 
 };
 
 extern MyWebServerClass MyWebServer;
+extern String MyWebServerLog;
 
 
 #endif
