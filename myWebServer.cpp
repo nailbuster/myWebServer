@@ -80,7 +80,7 @@ time_t ICACHE_FLASH_ATTR getNtpTime()
 {
 	
 	while (UDPNTPClient.parsePacket() > 0); // discard any previously received packets
-	Serial.println("Transmit NTP Request");
+	DebugPrintln("Transmit NTP Request");
 	IPAddress timeServerIP;
 	WiFi.hostByName(MyWebServer.ntpServerName.c_str(), timeServerIP);
 	sendNTPpacket(timeServerIP);
@@ -88,7 +88,7 @@ time_t ICACHE_FLASH_ATTR getNtpTime()
 	while (millis() - beginWait < 1500) {
 		int size = UDPNTPClient.parsePacket();
 		if (size >= NTP_PACKET_SIZE) {
-			Serial.println("Receive NTP Response");
+			DebugPrintln("Receive NTP Response");
 			UDPNTPClient.read(packetBuffer, NTP_PACKET_SIZE);  // read packet into the buffer
 			unsigned long secsSince1900;
 			// convert four bytes starting at location 40 to a long integer
@@ -99,7 +99,7 @@ time_t ICACHE_FLASH_ATTR getNtpTime()
 			return secsSince1900 - 2208988800UL + (MyWebServer.timezone/10) * SECS_PER_HOUR;
 		}
 	}
-	Serial.println("No NTP Response :-(");
+	DebugPrintln("No NTP Response :-(");
 	return 0; // return 0 if unable to get the time
 }
 
@@ -189,7 +189,7 @@ String ICACHE_FLASH_ATTR MyWebServerClass::urlencode(String str)
 
 
 
-bool ICACHE_FLASH_ATTR isAdmin()
+bool isAdmin()
 {
 	if (ConfigPassword == "") return true; //not using web password (default);
 	
@@ -204,7 +204,7 @@ bool ICACHE_FLASH_ATTR isAdmin()
 	return isAuth;  
 }
 
-String ICACHE_FLASH_ATTR getContentType(String filename)
+String getContentType(String filename)
 {
 	if (server.hasArg("download")) return "application/octet-stream";
 	else if (filename.endsWith(".htm")) return "text/html";
@@ -225,7 +225,7 @@ String ICACHE_FLASH_ATTR getContentType(String filename)
 
 
 
-bool ICACHE_FLASH_ATTR handleFileRead(String path)
+bool handleFileRead(String path)
 {
 	DebugPrintln("handleFileRead: " + path);
 	if (path.endsWith("/")) path += "index.html";
@@ -245,7 +245,7 @@ bool ICACHE_FLASH_ATTR handleFileRead(String path)
 	return false;
 }
 
-void ICACHE_FLASH_ATTR handleFileUpload()
+void handleFileUpload()
 {
 	if (server.uri() != "/upload") return;
 	if (isAdmin() == false) return;
@@ -272,7 +272,7 @@ void ICACHE_FLASH_ATTR handleFileUpload()
 	}
 }
 
-void ICACHE_FLASH_ATTR handleFileDelete(String fname)
+void handleFileDelete(String fname)
 {
 	if (isAdmin() == false) return;
 	DebugPrintln("handleFileDelete: " + fname);
@@ -286,7 +286,7 @@ void ICACHE_FLASH_ATTR handleFileDelete(String fname)
 	}
 }
 
-void ICACHE_FLASH_ATTR handleJsonSave()
+void handleJsonSave()
 {
 	if (isAdmin() == false) return;
 	if (server.args() == 0)
@@ -308,7 +308,7 @@ void ICACHE_FLASH_ATTR handleJsonSave()
 	if (MyWebServer.jsonSaveHandle != NULL)	MyWebServer.jsonSaveHandle(fname);
 }
 
-void ICACHE_FLASH_ATTR handleJsonLoad()
+void handleJsonLoad()
 {
 	if (isAdmin() == false) return;
 	if (server.args() == 0)
@@ -323,7 +323,7 @@ void ICACHE_FLASH_ATTR handleJsonLoad()
 	}
 }
 
-bool ICACHE_FLASH_ATTR handleFileDownload(String fname)
+bool handleFileDownload(String fname)
 {
 	if (isAdmin() == false) return false;
 	DebugPrintln("handleFileDownload: " + fname);
@@ -338,7 +338,7 @@ bool ICACHE_FLASH_ATTR handleFileDownload(String fname)
 	return false;
 }
 
-void ICACHE_FLASH_ATTR handleFileList()
+void handleFileList()
 {
 	if (isAdmin() == false) return;
 	Dir dir = SPIFFS.openDir("/");
@@ -367,7 +367,7 @@ void ICACHE_FLASH_ATTR handleFileList()
 	server.send(200, "text/json", output);
 }
 
-void ICACHE_FLASH_ATTR HandleFileBrowser()
+void HandleFileBrowser()
 {
 	if (isAdmin() == false) return;
 	if (server.arg("do") == "list") {
@@ -391,7 +391,7 @@ void ICACHE_FLASH_ATTR HandleFileBrowser()
 			}
 }
 
-void ICACHE_FLASH_ATTR formatspiffs()
+void formatspiffs()
 {
 	if (isAdmin() == false) return;
 	DebugPrintln("formatting spiff...");
@@ -402,7 +402,7 @@ void ICACHE_FLASH_ATTR formatspiffs()
 	server.send(200, "text/html", "Format Finished....rebooting");
 }
 
-void ICACHE_FLASH_ATTR handleESPUpdate(){
+void handleESPUpdate(){
 	if (isAdmin() == false) return;
 	// handler for the file upload, get's the sketch bytes, and writes
 	// them through the Update object
@@ -440,7 +440,7 @@ void ICACHE_FLASH_ATTR handleESPUpdate(){
 };
 
 
-void ICACHE_FLASH_ATTR FileSaveContent_P(String fname, PGM_P content, u_long numbytes, bool overWrite = false) {   //save PROGMEM array to spiffs file....//f must be already open for write!
+void FileSaveContent_P(String fname, PGM_P content, u_long numbytes, bool overWrite = false) {   //save PROGMEM array to spiffs file....//f must be already open for write!
 
 	if (SPIFFS.exists(fname) & overWrite == false) return;
 
@@ -478,7 +478,7 @@ void ICACHE_FLASH_ATTR FileSaveContent_P(String fname, PGM_P content, u_long num
 
 
 
-void ICACHE_FLASH_ATTR CheckNewSystem() {   //if new system we save the embedded htmls into the root of Spiffs as .gz!
+void CheckNewSystem() {   //if new system we save the embedded htmls into the root of Spiffs as .gz!
 	
 	FileSaveContent_P("/wifisetup.html.gz", PAGE_WIFISETUP, sizeof(PAGE_WIFISETUP), false);
 	FileSaveContent_P("/filebrowse.html.gz", PAGE_FSBROWSE, sizeof(PAGE_FSBROWSE), false);
@@ -558,13 +558,13 @@ void ICACHE_FLASH_ATTR sendNetworkStatus()
 	server.send(200, "text/html", values);
 }
 
-void ICACHE_FLASH_ATTR handleWifiConfig() {
+void handleWifiConfig() {
 	//send GZ version of embedded config
 	server.sendHeader("Content-Encoding", "gzip");
 	server.send_P(200, "text/html", PAGE_WIFISETUP, sizeof(PAGE_WIFISETUP));
 }
 
-void ICACHE_FLASH_ATTR handleRoot() {  //handles root of website (used in case of virgin systems.)
+void handleRoot() {  //handles root of website (used in case of virgin systems.)
 
 	if (!handleFileRead("/")) {   //if new system without index we either show wifisetup or if already setup/connected we show filebrowser for config.
 		if (isAdmin()) {
@@ -589,7 +589,7 @@ String MyWebServerClass::CurDateString() {
 	return String(year()) + "-" + String(month()) + "-" + String(day());
 }
 
-void ICACHE_FLASH_ATTR MyWebServerClass::begin()
+void MyWebServerClass::begin()
 {
 //SERVER STARTUP
 //SERVER INIT
@@ -742,7 +742,7 @@ void ICACHE_FLASH_ATTR MyWebServerClass::begin()
 
 
 
-void ICACHE_FLASH_ATTR MyWebServerClass::handle()
+void MyWebServerClass::handle()
 {
 	server.handleClient();
 	if (dsnServerActive)  dnsServer.processNextRequest();  //captive dns	
@@ -765,12 +765,12 @@ void ICACHE_FLASH_ATTR MyWebServerClass::ServerLog(String logmsg)
 }
 
 
-bool ICACHE_FLASH_ATTR MyWebServerClass::isAuthorized() {
+bool MyWebServerClass::isAuthorized() {
 	return isAdmin();
 }
 
 
-bool ICACHE_FLASH_ATTR MyWebServerClass::WiFiLoadconfig()
+bool MyWebServerClass::WiFiLoadconfig()
 {
 
 
