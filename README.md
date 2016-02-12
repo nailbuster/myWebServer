@@ -26,10 +26,9 @@ ntp time support will some methods to easily grab current date/time.
 
 see sample htmls in folder for other features....
 
-
-
-
 this is still a WIP but I'll be updating as needed....I have other features I want to implement as well....
+
+***IF you want to see a sample 'complete' project that uses this server with MQTT & ThingSpeak, see my other project at:  https://github.com/nailbuster/EspressModuleHM
 
 
 
