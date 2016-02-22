@@ -53,7 +53,7 @@ String MyWebServerLog;
 
 
 // send an NTP request to the time server at the given address
-void ICACHE_FLASH_ATTR sendNTPpacket(IPAddress &address)
+void  sendNTPpacket(IPAddress &address)
 {
 	// set all bytes in the buffer to 0
 	memset(packetBuffer, 0, NTP_PACKET_SIZE);
@@ -76,7 +76,7 @@ void ICACHE_FLASH_ATTR sendNTPpacket(IPAddress &address)
 }
 
 
-time_t ICACHE_FLASH_ATTR getNtpTime()
+time_t getNtpTime()
 {
 	
 	while (UDPNTPClient.parsePacket() > 0); // discard any previously received packets
@@ -108,7 +108,7 @@ time_t ICACHE_FLASH_ATTR getNtpTime()
 
 
 // convert a single hex digit character to its integer value (from https://code.google.com/p/avr-netino/)
-unsigned char ICACHE_FLASH_ATTR h2int(char c)
+unsigned char h2int(char c)
 {
 	if (c >= '0' && c <= '9') {
 		return((unsigned char)c - '0');
@@ -122,7 +122,7 @@ unsigned char ICACHE_FLASH_ATTR h2int(char c)
 	return(0);
 }
 
-String ICACHE_FLASH_ATTR MyWebServerClass::urldecode(String input) // (based on https://code.google.com/p/avr-netino/)
+String MyWebServerClass::urldecode(String input) // (based on https://code.google.com/p/avr-netino/)
 {
 	char c;
 	String ret = "";
@@ -147,14 +147,14 @@ String ICACHE_FLASH_ATTR MyWebServerClass::urldecode(String input) // (based on 
 }
 
 
-String ICACHE_FLASH_ATTR MyWebServerClass::urlencode(String str)
+String MyWebServerClass::urlencode(String str)
 {
 	String encodedString = "";
 	char c;
 	char code0;
 	char code1;
 	char code2;
-	for (int i = 0; i < str.length(); i++) {
+	for (unsigned int i = 0; i < str.length(); i++) {
 		c = str.charAt(i);
 		if (c == ' ') {
 			encodedString += '+';
@@ -442,7 +442,7 @@ void handleESPUpdate(){
 
 void FileSaveContent_P(String fname, PGM_P content, u_long numbytes, bool overWrite = false) {   //save PROGMEM array to spiffs file....//f must be already open for write!
 
-	if (SPIFFS.exists(fname) & overWrite == false) return;
+	if (SPIFFS.exists(fname) && overWrite == false) return;
 
 
 	const int writepagesize = 1024;
@@ -486,15 +486,16 @@ void CheckNewSystem() {   //if new system we save the embedded htmls into the ro
 
 
 
-void ICACHE_FLASH_ATTR restartESP() {
+void restartESP() {
 	if (isAdmin() == false) return;
 	server.send(200, "text/plain", "Restarting ESP...");
 	delay(100);
 	ESP.restart();
 }
 
-void ICACHE_FLASH_ATTR sendNetworkStatus()
+void sendNetworkStatus()
 {
+	if (isAdmin() == false) return;
 	uint8_t mac[6];
 	char macStr[18] = { 0 };
 	WiFi.macAddress(mac);
@@ -553,10 +554,25 @@ void ICACHE_FLASH_ATTR sendNetworkStatus()
 	values += "Mac Address    >   " + String(macStr) + "<br>";
 	values += "NTP Time       :   " + String(hour()) + ":" + String(minute()) + ":" + String(second()) + " " + String(year()) + "-" + String(month()) + "-" + String(day()) + "<br>";
 	values += "Server Uptime  :   " + String(millis()/60000) + " minutes"+ "<br>";
+	values += "Server Heap  :   " + String(ESP.getFreeHeap()) + "<br>";
 	values += wifilist;
 	values += " <input action=\"action\" type=\"button\" value=\"Back\" onclick=\"history.go(-1);\" style=\"width: 100px; height: 50px;\" /> </body> ";
 	server.send(200, "text/html", values);
 }
+
+void SendServerLog() {
+	if (isAdmin() == false) return;	
+	String rhtml = "";
+	rhtml += "<body> <h1> Server Log </h1><br>";
+	rhtml += "Server Uptime  :   " + String(millis() / 60000) + " minutes" + "<br>";
+	rhtml += "Server Heap  :   " + String(ESP.getFreeHeap()) + "<br>";
+	rhtml += "Last Log: <br>";
+	rhtml += MyWebServerLog;
+	rhtml += " <input action=\"action\" type=\"button\" value=\"Back\" onclick=\"history.go(-1);\" style=\"width: 100px; height: 50px;\" /> </body> ";	
+	server.send(200, "text/html", rhtml);
+}
+
+
 
 void handleWifiConfig() {
 	//send GZ version of embedded config
@@ -713,7 +729,7 @@ void MyWebServerClass::begin()
 	server.on("/jsonsave", handleJsonSave);
 	server.on("/jsonload", handleJsonLoad);
 	server.on("/formatspiff", formatspiffs);
-	server.on("/serverlog", []() { if (isAdmin()) server.send(200, "text/html", MyWebServerLog);});
+	server.on("/serverlog", SendServerLog);
 	server.on("/generate_204", handleRoot);  //use indexhtml or use embedded wifi setup...);
 	server.on("/restartesp", restartESP);
 
@@ -750,15 +766,14 @@ void MyWebServerClass::handle()
 	if (millis() - lastTimeCheck >= 5000) {    //called around every second	
 		//DebugPrintln(CurTimeString());
 		lastTimeCheck = millis();
-		//heap test
-		//DebugPrintln("Free heap: " + String(ESP.getFreeHeap()));
+		
 	}  //every second timer....
 		
 	
 }
 
 
-void ICACHE_FLASH_ATTR MyWebServerClass::ServerLog(String logmsg)
+void MyWebServerClass::ServerLog(String logmsg)
 {
 	MyWebServerLog += "*"+String(month())+String(day())+CurTimeString()+"*" + logmsg + "<br>";
 	if (MyWebServerLog.length() > 1024) { MyWebServerLog.remove(0, 256); }
@@ -798,13 +813,13 @@ bool MyWebServerClass::WiFiLoadconfig()
 			DebugPrintln("parseObject() loadwifi failed");
 			return false;
 		}
-		if (root["ssid"].asString() != "") { //verify good json info                                                
+		if (String(root["ssid"].asString()) != "") { //verify good json info                                                
 			ssid = root["ssid"].asString();
 			password = root["password"].asString();
 			if (String(root["dhcp"].asString()).toInt() == 1) dhcp = true; else dhcp = false;
-			IP[0] == String(root["ip_0"].asString()).toInt(); IP[1] == String(root["ip_1"].asString()).toInt(); IP[2] == String(root["ip_2"].asString()).toInt(); IP[3] == String(root["ip_3"].asString()).toInt();
-			Netmask[0] == String(root["nm_0"].asString()).toInt(); Netmask[1] == String(root["nm_1"].asString()).toInt(); Netmask[2] == String(root["nm_2"].asString()).toInt(); Netmask[3] == String(root["nm_3"].asString()).toInt();
-			Gateway[0] == String(root["gw_0"].asString()).toInt(); Gateway[1] == String(root["gw_1"].asString()).toInt(); Gateway[2] == String(root["gw_2"].asString()).toInt(); Gateway[3] == String(root["gw_3"].asString()).toInt();
+			IP[0] = String(root["ip_0"].asString()).toInt(); IP[1] = String(root["ip_1"].asString()).toInt(); IP[2] = String(root["ip_2"].asString()).toInt(); IP[3] = String(root["ip_3"].asString()).toInt();
+			Netmask[0] = String(root["nm_0"].asString()).toInt(); Netmask[1] = String(root["nm_1"].asString()).toInt(); Netmask[2] = String(root["nm_2"].asString()).toInt(); Netmask[3] = String(root["nm_3"].asString()).toInt();
+			Gateway[0] = String(root["gw_0"].asString()).toInt(); Gateway[1] = String(root["gw_1"].asString()).toInt(); Gateway[2] = String(root["gw_2"].asString()).toInt(); Gateway[3] = String(root["gw_3"].asString()).toInt();
 			if (String(root["grabntp"].asString()).toInt() == 1) useNTP = true; else useNTP = false;
 
 			ntpServerName = root["ntpserver"].asString();
@@ -826,6 +841,7 @@ bool MyWebServerClass::WiFiLoadconfig()
 			return true;
 		}
 	} //file exists;      
+	return false; //error if here
 }
 
 
