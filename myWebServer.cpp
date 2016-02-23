@@ -30,6 +30,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "htmlEmbed.h"
 #include <TimeLib.h>
 
+#ifdef ALLOW_IDEOTA
+ #include <ArduinoOTA.h>
+#endif // ALLOW_IDEOTA
+
+
 
 ESP8266WebServer server(80);
 IPAddress apIP(192, 168, 4, 1);
@@ -440,6 +445,42 @@ void handleESPUpdate(){
 };
 
 
+#ifdef ALLOW_IDEOTA
+void StartUp_IDEOTA() {
+	// Port defaults to 8266
+	// ArduinoOTA.setPort(8266);
+
+	// Hostname defaults to esp8266-[ChipID]
+	// ArduinoOTA.setHostname("myesp8266");
+
+	// No authentication by default
+	// ArduinoOTA.setPassword((const char *)"123");
+
+	ArduinoOTA.onStart([]() {
+		DebugPrintln("Start OTA");
+	});
+	ArduinoOTA.onEnd([]() {
+		DebugPrintln("End OTA");
+	});
+	ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+		DebugPrint("." +String((progress / (total / 100))));
+	});
+	ArduinoOTA.onError([](ota_error_t error) {
+		String errST = "Error: ";
+		if (error == OTA_AUTH_ERROR) errST+="Auth Failed";
+		else if (error == OTA_BEGIN_ERROR) errST += "Begin Failed";
+		else if (error == OTA_CONNECT_ERROR) errST += "Connect Failed";
+		else if (error == OTA_RECEIVE_ERROR) errST += "Receive Failed";
+		else if (error == OTA_END_ERROR) errST += "End Failed";
+		DebugPrintln(errST);
+	});
+	ArduinoOTA.begin();
+	DebugPrintln("IDE OTA active");
+}
+#endif // ALLOW_IDEOTA
+
+
+
 void FileSaveContent_P(String fname, PGM_P content, u_long numbytes, bool overWrite = false) {   //save PROGMEM array to spiffs file....//f must be already open for write!
 
 	if (SPIFFS.exists(fname) && overWrite == false) return;
@@ -751,7 +792,11 @@ void MyWebServerClass::begin()
 		setSyncInterval(UpdateNTPEvery*60);  
 	}
 
+#ifdef ALLOW_IDEOTA	     //if defined in h we will start/allow OTA via IDE.  should be disabled on your released code.
+	StartUp_IDEOTA();
+#endif // Allow_IDEOTA
 
+	
 	ServerLog("SERVER STARTED");
 	DebugPrintln(CurTimeString());
 }
@@ -769,7 +814,9 @@ void MyWebServerClass::handle()
 		
 	}  //every second timer....
 		
-	
+	#ifdef ALLOW_IDEOTA	     //if defined in h we will start/allow OTA via IDE.  should be disabled on your released code.
+	    ArduinoOTA.handle();
+	#endif // Allow_IDEOTA
 }
 
 
