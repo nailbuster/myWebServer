@@ -81,6 +81,23 @@ void  sendNTPpacket(IPAddress &address)
 }
 
 
+bool IsDst(int hour,int day, int month, int dow)  //north american dst  dow 0=SUN
+{
+	if (MyWebServer.daylight == false) return false; //option to disable DST
+
+    //January, february, and december are out.
+	if (month < 3 || month > 11) { return false; }
+	//April to October are in
+	if (month > 3 && month < 11) { return true; }
+	int previousSunday = day - dow;
+	//In march, we are DST if our previous sunday was on or after the 8th.
+	if (month == 3) { return previousSunday >= 8; }
+	//In november we must be before the first sunday to be dst.
+	//That means the previous sunday must be before the 1st.
+	return previousSunday <= 0;	
+}
+
+
 time_t getNtpTime()
 {
 	
@@ -101,7 +118,9 @@ time_t getNtpTime()
 			secsSince1900 |= (unsigned long)packetBuffer[41] << 16;
 			secsSince1900 |= (unsigned long)packetBuffer[42] << 8;
 			secsSince1900 |= (unsigned long)packetBuffer[43];
-			return secsSince1900 - 2208988800UL + (MyWebServer.timezone/10) * SECS_PER_HOUR;
+			secsSince1900 = secsSince1900 - 2208988800UL + ((MyWebServer.timezone / 10) * SECS_PER_HOUR);
+			if (IsDst(hour(secsSince1900),day(secsSince1900), month(secsSince1900), dayOfWeek(secsSince1900)-1)) secsSince1900 += 3600;  //add hour if DST			
+			return secsSince1900;
 		}
 	}
 	DebugPrintln("No NTP Response :-(");
