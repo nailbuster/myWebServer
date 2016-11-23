@@ -45,7 +45,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 
 #define DEBUG
-//#define ALLOW_IDEOTA
+//#define ALLOW_IDEOTA             //define this to allow IDE OTA,  good while debugging....
 
 #ifdef DEBUG
 #define DebugPrint(x)     Serial.print (x)
@@ -84,7 +84,7 @@ class MyWebServerClass
 	 boolean SoftAPAlways;      //run AP Mode always...normally false to only run when can't connect	
 	 boolean OTAisflashing;   
 	 boolean isDownloading;    //file transfers get wacky with other services....so other services should check and disable if true....
-
+	 boolean AllowPublic = false;  //determine if we allow page views for public pages...or need the admin access pass for all pages.
 	 String ntpServerName;  //ntp stuffs
 	 long UpdateNTPEvery;
 	 long timezone;

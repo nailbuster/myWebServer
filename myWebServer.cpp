@@ -177,7 +177,7 @@ String MyWebServerClass::urlencode(String str)
 	char c;
 	char code0;
 	char code1;
-	char code2;
+	//char code2;
 	for (unsigned int i = 0; i < str.length(); i++) {
 		c = str.charAt(i);
 		if (c == ' ') {
@@ -196,7 +196,7 @@ String MyWebServerClass::urlencode(String str)
 			if (c > 9) {
 				code0 = c - 10 + 'A';
 			}
-			code2 = '\0';
+			//code2 = '\0';
 			encodedString += '%';
 			encodedString += code0;
 			encodedString += code1;
@@ -228,6 +228,20 @@ bool isAdmin()
 	return isAuth;  
 }
 
+bool isPublicFile(String filename)  //in Public mode,  display any file that doesn't have a $$$, or they will need admin access....
+{
+	bool isPub = false;
+
+	if (MyWebServer.AllowPublic)
+	{
+		if (filename.indexOf("$$$") < 0) isPub = true;   //if no $ in filename then allow file to be used/viewed.
+		if (filename.indexOf("wifiset") >= 0) isPub = false;   //hardcode wifiset cannot be public.....
+	}
+
+	return isPub;
+}
+
+
 String getContentType(String filename)
 {
 	if (server.hasArg("download")) return "application/octet-stream";
@@ -255,17 +269,20 @@ bool handleFileRead(String path)
 	if (path.endsWith("/")) path += "index.html";
 	String contentType = getContentType(path);
 	String pathWithGz = path + ".gz";
-	if (isAdmin())
-	{
-		if (SPIFFS.exists(pathWithGz) || SPIFFS.exists(path)) {
+	path = MyWebServer.urldecode(path);
+	if (isPublicFile(path) == false) {
+		if (isAdmin() == false) return false;  //check if a public file.
+	}
+
+	if (SPIFFS.exists(pathWithGz) || SPIFFS.exists(path)) {
 			if (SPIFFS.exists(pathWithGz))
 				path += ".gz";
 			File file = SPIFFS.open(path, "r");
-			size_t sent = server.streamFile(file, contentType);
+			 server.streamFile(file, contentType);
 			file.close();
 			return true;
 		}
-	}
+	
 	return false;
 }
 
@@ -301,6 +318,7 @@ void handleFileDelete(String fname)
 	if (isAdmin() == false) return;
 	DebugPrintln("handleFileDelete: " + fname);
 	fname = '/' + fname;
+	fname = MyWebServer.urldecode(fname);
 	if (!SPIFFS.exists(fname))
 		return server.send(404, "text/plain", "FileNotFound");
 	if (SPIFFS.exists(fname))
@@ -312,13 +330,19 @@ void handleFileDelete(String fname)
 
 void handleJsonSave()
 {
-	if (isAdmin() == false) return;
+
 	if (server.args() == 0)
 		return server.send(500, "text/plain", "BAD JsonSave ARGS");
 
 	String fname = "/" + server.arg(0);
+	fname = MyWebServer.urldecode(fname);
 
 	DebugPrintln("handleJsonSave: " + fname);
+
+	if (isPublicFile(fname) == false)
+	{
+		if (isAdmin() == false) return;  //check if a public file.
+	}
 
 	File file = SPIFFS.open(fname, "w");
 	if (file) {
@@ -334,11 +358,18 @@ void handleJsonSave()
 
 void handleJsonLoad()
 {
-	if (isAdmin() == false) return;
+	
 	if (server.args() == 0)
 		return server.send(500, "text/plain", "BAD JsonLoad ARGS");
 	String fname = "/" + server.arg(0);
+
+	fname = MyWebServer.urldecode(fname);
 	DebugPrintln("handleJsonRead: " + fname);
+
+	if (isPublicFile(fname) == false)
+	{
+		if (isAdmin() == false) return;  //check if a public file.
+	}	
 
 	File file = SPIFFS.open(fname, "r");
 	if (file) {
@@ -349,13 +380,18 @@ void handleJsonLoad()
 
 bool handleFileDownload(String fname)
 {
-	if (isAdmin() == false) return false;
 	DebugPrintln("handleFileDownload: " + fname);
 	String contentType = "application/octet-stream";
 	fname = "/" + fname;
+	fname = MyWebServer.urldecode(fname);
+	if (isPublicFile(fname) == false)
+	{
+		if (isAdmin() == false) return false;
+	}  //check if a public file.
+
 	if (SPIFFS.exists(fname)) {
 		File file = SPIFFS.open(fname, "r");
-		size_t sent = server.streamFile(file, contentType);
+		server.streamFile(file, contentType);
 		file.close();
 		return true;
 	}
@@ -620,6 +656,61 @@ void sendNetworkStatus()
 	server.send(200, "text/html", values);
 }
 
+void SendAvailNetworks()
+{
+	if (isAdmin() == false) return;
+	uint8_t mac[6];
+	char macStr[18] = { 0 };
+	WiFi.macAddress(mac);
+	sprintf(macStr, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+
+	String state = "N/A";
+	String Networks = "";
+	if (WiFi.status() == 0) state = "Idle";
+	else if (WiFi.status() == 1) state = "NO SSID AVAILBLE";
+	else if (WiFi.status() == 2) state = "SCAN COMPLETED";
+	else if (WiFi.status() == 3) state = "CONNECTED";
+	else if (WiFi.status() == 4) state = "CONNECT FAILED";
+	else if (WiFi.status() == 5) state = "CONNECTION LOST";
+	else if (WiFi.status() == 6) state = "DISCONNECTED";
+
+	int n = WiFi.scanNetworks();
+
+	String postStr = "{ \"Networks\":[";    //build json string of networks available
+
+	if (n == 0)
+	{
+		postStr+= "{\"ssidname\":\"No networks found!\",\"qual\":\"0\",\"sec\":\" \" }";
+	}
+	else
+	{
+		for (int i = 0; i < n; ++i)
+		{
+			int quality = 0;
+			if (WiFi.RSSI(i) <= -100)
+			{
+				quality = 0;
+			}
+			else if (WiFi.RSSI(i) >= -50)
+			{
+				quality = 100;
+			}
+			else
+			{
+				quality = 2 * (WiFi.RSSI(i) + 100);
+			}
+			postStr += "{\"ssidname\":\"" + String(WiFi.SSID(i)) + "\",\"qual\":\"" + String(quality) + "\",\"sec\":\"" + String((WiFi.encryptionType(i) == ENC_TYPE_NONE) ? " " : "*") + "\"},";
+		}		
+	}
+	if (postStr.charAt(postStr.length() - 1) == ',') postStr.remove(postStr.length() - 1, 1);
+	postStr += "] }";  //finish json array
+
+	server.send(200, "application/json", postStr);
+
+}
+
+
+
 void SendServerLog() {
 	if (isAdmin() == false) return;	
 	String rhtml = "";
@@ -792,6 +883,7 @@ void MyWebServerClass::begin()
 	server.on("/serverlog", SendServerLog);
 	server.on("/generate_204", handleRoot);  //use indexhtml or use embedded wifi setup...);
 	server.on("/restartesp", restartESP);
+	server.on("/availnets", SendAvailNetworks);
 
 	server.onNotFound([]() {
 		if (!handleFileRead(server.uri()))
@@ -901,7 +993,9 @@ bool MyWebServerClass::WiFiLoadconfig()
 
 
 			if (String(root["grabntp"].asString()).toInt() == 1) useNTP = true; else useNTP = false;
-			if (String(root["dst"].asString()).toInt() == 1) daylight = true; else daylight = false;					
+			if (String(root["dst"].asString()).toInt() == 1) daylight = true; else daylight = false;		
+
+			if (String(root["Public"].asString()) == "true") AllowPublic = true; else  AllowPublic = false;
 
 			DebugPrintln("all good");
 			return true;
