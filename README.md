@@ -1,6 +1,14 @@
 # myWebServer
 myWebServer library for esp8266/nodemcu arduino ide.  
 
+**** 
+This project works fine, but wanted to let you know that I have a redesigned version this project: https://github.com/nailbuster/myWebServerAsync
+
+That server uses the Async WEB/TCP library so that it can handle requests quickly and non-blocking. It also includes jquery/bootstrap/css/fontawesome within the library so they are available when booted up.
+
+both projects work,  just depends on your use case, and your preference....
+****
+
 Uses Arduino IDE,  ensure latest esp8266 from:  https://github.com/esp8266/Arduino  (make sure you are using staging version, or a release after Jan 2016)
 
 Library requires the use of the following 3rd party libraries to be installed:
