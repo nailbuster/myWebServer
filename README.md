@@ -26,7 +26,7 @@ It will try and connect to your AcessPoint, if not config/connect it will auto-s
 
 Afterwards once device connected to your local router/internet.  You go to it's local lan IP, or if your system supports mDNS you can type http://"device_name".local on your browser(device name is from setup from above).  
 
-Virgin configs will bring up an integrated HTML file browser.  You can upload multiple files or drag files to top to allow you webserver to work...(index.html...etc).
+Virgin configs will bring up an integrated HTML file browser.  You can upload multiple files or drag files to top to allow you webserver to work...(index.html...etc). The file browser is based on project:  https://github.com/jcampbell1/simple-file-manager
 
 supports OTA updating of ESP device via Wifi.
 
